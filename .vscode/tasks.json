@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run FastAPI backend",
+      "type": "shell",
+      "command": "conda run -n base uvicorn backend.main:app --reload",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run React frontend",
+      "type": "shell",
+      "command": "cd frontend && npm run dev",
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}
