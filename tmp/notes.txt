@@ -1,0 +1,5 @@
+conda activate conda-venv
+
+cd frontend && npm run dev
+
+uvicorn backend.main:app --reload
