@@ -7,33 +7,19 @@ def get_oneagent_version_prompt() -> str:
 
 def get_oneagent_summary_prompt(version: str) -> str:
     return f"""
-        Summarize the contents of the Dynatrace OneAgent release notes version {version} according to the following requirements:
+             Please access the Dynatrace OneAgent release notes page for version {version} and provide a comprehensive summary.
+        
+            1. First, navigate to https://docs.dynatrace.com/docs/whats-new/oneagent/ and find the release notes for version {version}
+            2. Read the ENTIRE page content, not just a preview
+            3. Extract and summarize ALL the key features, improvements, bug fixes, and changes mentioned
+            4. Include details about:
+            - New features and capabilities
+            - Performance improvements
+            - Bug fixes
+            - Breaking changes or deprecations
+            - Security updates
+            5. Provide a structured summary with clear sections
+            
+            Please ensure you access the complete content of the release notes, not just a preview or beginning portion.
 
-        - Retain all h1 and h2 headers from the original document, preserving their textual content and order as they appear on the page.
-        - For each h2 block, generate a concise bulleted summary that covers the main points and key updates within the block. Present this summary immediately beneath the corresponding h2 header.
-        - Do not alter or combine header sequences; preserve the structural flow of h1 and h2 sections strictly as in the original.
-        - Do not summarize headers or rephrase their wording—summarize only the content beneath h2 headers.
-        - Each bulleted summary should capture the essential details, updates, and fixes, using clear language.
-        - Ensure the final output only contains headers at the h1 and h2 level and concise, bulleted summaries beneath h2 headers.
-        - If a section contains no substantive information (e.g., “No changes for this release”), note this with a single bullet: • No notable changes in this section.
-
-        Output format:
-        - The response must use markdown.
-        - Headers should be formatted as markdown h1 and h2, mirroring the original document.
-        - Below each h2 header, place the bulleted summary.
-
-        Example:
-
-        # [h1 header from the document]
-
-        ## [h2 Header 1]
-
-        - Bullet summarizing content point A
-        - Bullet summarizing content point B
-
-        ## [h2 Header 2]
-
-        - Bullet summarizing content point C
-
-        (Reminder: Main objectives—retain h1/h2 headers and sequence, summarize only h2 blocks as bulleted markdown lists, do not rephrase headers, and ignore content below h2 level.)
-    """
+        """

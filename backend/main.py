@@ -46,10 +46,9 @@ def read_root():
 @app.post("/api/oneagent-release-news")
 async def oneagent_release_news(request: Request):
     logger.info("Received request for OneAgent release news")
-    result = await get_oneagent_latest_version()
-    if "error" in result:
-        return JSONResponse(status_code=500, content=result)
-    one_agent_latest_version = result["oneAgentLatestVersion"]
+    one_agent_latest_version = await get_oneagent_latest_version()
+    if "error" in one_agent_latest_version:
+        return JSONResponse(status_code=500, content=one_agent_latest_version)
 
     summary_result = await get_oneagent_release_summary(one_agent_latest_version)
     if "error" in summary_result:
@@ -58,39 +57,36 @@ async def oneagent_release_news(request: Request):
 
 
 
+# @app.post("/api/download-full-release-news")
+# async def download_full_release_news(request: Request):
+#     if not openai_client:
+#         return JSONResponse(status_code=500, content={"error": "OpenAI API key not configured."})
+#     try:
+#         open_api_prompt = (
+#             "open https://docs.dynatrace.com/managed/whats-new/oneagent;\n"
+#             "search for the latest version in the 'version' table column; output that number only"
+#         )
+#         open_api_response = openai_client.responses.create(
+#             model="gpt-4.1",
+#             input=open_api_prompt,
+#             tools=[{"type": "web_search_preview"}]
+#         )
+#         one_agent_latest_version = open_api_response.output_text.strip()
 
-
-
-@app.post("/api/download-full-release-news")
-async def download_full_release_news(request: Request):
-    if not openai_client:
-        return JSONResponse(status_code=500, content={"error": "OpenAI API key not configured."})
-    try:
-        open_api_prompt = (
-            "open https://docs.dynatrace.com/managed/whats-new/oneagent;\n"
-            "search for the latest version in the 'version' table column; output that number only"
-        )
-        open_api_response = openai_client.responses.create(
-            model="gpt-4.1",
-            input=open_api_prompt,
-            tools=[{"type": "web_search_preview"}]
-        )
-        one_agent_latest_version = open_api_response.output_text.strip()
-
-        summary_prompt = (
-            f"Get the contents of the Dynatrace OneAgent release notes for version {one_agent_latest_version}"
-        )
-        summary_response = openai_client.chat.completions.create(
-            model="gpt-4.1",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": summary_prompt}
-            ]
-        )
-        summary = summary_response.choices[0].message.content
-        return {"summary": summary, "oneAgentLatestVersion": one_agent_latest_version}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+#         summary_prompt = (
+#             f"Get the contents of the Dynatrace OneAgent release notes for version {one_agent_latest_version}"
+#         )
+#         summary_response = openai_client.chat.completions.create(
+#             model="gpt-4.1",
+#             messages=[
+#                 {"role": "system", "content": "You are a helpful assistant."},
+#                 {"role": "user", "content": summary_prompt}
+#             ]
+#         )
+#         summary = summary_response.choices[0].message.content
+#         return {"summary": summary, "oneAgentLatestVersion": one_agent_latest_version}
+#     except Exception as e:
+#         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 # Helper function for internal use
@@ -98,7 +94,7 @@ async def get_oneagent_latest_version():
     return await oneagent_latest_version()
 
 
-async def oneagent_latest_version():
+async def oneagent_latest_version() -> ComponentLatestReleaseVersion:
     if not openai_client:
         return {"error": "OpenAI API key not configured."}
     try:
@@ -116,16 +112,23 @@ async def oneagent_latest_version():
         #     # tools=[{"type": "web_search_preview"}],
 
 
-        open_api_completion = openai_client.responses.create(
-            model="gpt-4.1",
+        oneagent_version_response= openai_client.responses.parse(
+            model="gpt-4o",  # Use gpt-4o instead of gpt-4.1
             input=oneagent_version_prompt,
             tools=[{"type": "web_search_preview"}],
+            text_format=ComponentLatestReleaseVersion
         )
-        result = open_api_completion.output_text
+        result = oneagent_version_response.output_parsed
         if result is None:
             return {"error": "Failed to extract the latest OneAgent version."}
-        one_agent_latest_version = result
-        return {"oneAgentLatestVersion": one_agent_latest_version}
+        
+        print(f"Received response from OpenAI: {result}")
+
+        return result.version
+        
+        # one_agent_latest_version = result.version.strip()
+
+        # return {"oneAgentLatestVersion": one_agent_latest_version}
     except Exception as e:
         return {"error": str(e)}
 
@@ -134,18 +137,21 @@ async def oneagent_latest_version():
 # Helper function for getting the summary for a given version
 async def get_oneagent_release_summary(version: str):
     try:
+        # Option 1: Use improved prompt with web_search_preview
         summary_prompt = get_oneagent_summary_prompt(version)
-
         print(f"Sending summary prompt to OpenAI: {summary_prompt}")
+        
         summary_response = openai_client.responses.create(
-            model="gpt-4.1",
+            model="gpt-4o",  # Use gpt-4o instead of gpt-4.1 for better web access
             input=summary_prompt,
             tools=[{"type": "web_search_preview"}]
         )
         summary = summary_response.output_text
         print(f"Received summary from OpenAI: {summary}")
+        
         if summary is None:
             return {"error": "Failed to get summary from OpenAI."}
+                
         return {"summary": summary}
     except Exception as e:
         return {"error": str(e)}

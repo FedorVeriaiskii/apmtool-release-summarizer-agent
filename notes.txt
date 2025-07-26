@@ -1,4 +1,4 @@
-conda activate conda-venv
+source C:/Users/fedor/miniconda3/Scripts/activate conda-venv
 
 cd frontend && npm run dev
 
