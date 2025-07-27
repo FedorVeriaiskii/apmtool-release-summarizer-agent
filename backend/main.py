@@ -1,4 +1,7 @@
 
+# FastAPI backend for Dynatrace Release Notes Summarizer Agent
+# Provides REST API endpoints for processing and summarizing Dynatrace release notes
+
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +12,7 @@ from dotenv import load_dotenv
 
 import openai
 from pydantic import BaseModel
-from .prompts import get_oneagent_summary_prompt, get_oneagent_version_prompt
+from .services.process_oneagent_release_notes import ProcessOneAgentReleaseNotes
 
 
 load_dotenv()
@@ -28,131 +31,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize OpenAI client and OneAgent processor
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai_client = openai.OpenAI(api_key=openai_api_key) if openai_api_key else None
 
+# Initialize the OneAgent release notes processor
+oneagent_processor = ProcessOneAgentReleaseNotes(openai_client)
 
 
 class ComponentLatestReleaseVersion(BaseModel):
+    """Pydantic model for version responses"""
     version: str
 
 
 
 @app.get("/")
 def read_root():
+    """Health check endpoint"""
     return {"message": "Hello from FastAPI!"}
 
 
-@app.post("/api/oneagent-release-news")
-async def oneagent_release_news(request: Request):
-    logger.info("Received request for OneAgent release news")
-    one_agent_latest_version = await get_oneagent_latest_version()
-    if "error" in one_agent_latest_version:
-        return JSONResponse(status_code=500, content=one_agent_latest_version)
-
-    summary_result = await get_oneagent_release_summary(one_agent_latest_version)
-    if "error" in summary_result:
-        return JSONResponse(status_code=500, content=summary_result)
-    return {"summary": summary_result["summary"], "oneAgentLatestVersion": one_agent_latest_version}
-
-
-
-# @app.post("/api/download-full-release-news")
-# async def download_full_release_news(request: Request):
-#     if not openai_client:
-#         return JSONResponse(status_code=500, content={"error": "OpenAI API key not configured."})
-#     try:
-#         open_api_prompt = (
-#             "open https://docs.dynatrace.com/managed/whats-new/oneagent;\n"
-#             "search for the latest version in the 'version' table column; output that number only"
-#         )
-#         open_api_response = openai_client.responses.create(
-#             model="gpt-4.1",
-#             input=open_api_prompt,
-#             tools=[{"type": "web_search_preview"}]
-#         )
-#         one_agent_latest_version = open_api_response.output_text.strip()
-
-#         summary_prompt = (
-#             f"Get the contents of the Dynatrace OneAgent release notes for version {one_agent_latest_version}"
-#         )
-#         summary_response = openai_client.chat.completions.create(
-#             model="gpt-4.1",
-#             messages=[
-#                 {"role": "system", "content": "You are a helpful assistant."},
-#                 {"role": "user", "content": summary_prompt}
-#             ]
-#         )
-#         summary = summary_response.choices[0].message.content
-#         return {"summary": summary, "oneAgentLatestVersion": one_agent_latest_version}
-#     except Exception as e:
-#         return JSONResponse(status_code=500, content={"error": str(e)})
-
-
-# Helper function for internal use
-async def get_oneagent_latest_version():
-    return await oneagent_latest_version()
-
-
-async def oneagent_latest_version() -> ComponentLatestReleaseVersion:
-    if not openai_client:
-        return {"error": "OpenAI API key not configured."}
+@app.post("/api/dynatrace-release-news-summary")
+async def build_dynatrace_release_news_summary(request: Request):
+    """Main endpoint to generate Dynatrace release news summary"""
+    
+    # Parse request body to check for selectedItems
     try:
-        oneagent_version_prompt = get_oneagent_version_prompt()
-        print(f"Sending prompt to OpenAI: {oneagent_version_prompt}")
-        # open_api_completion = openai_client.beta.chat.completions.parse(
-        #     model="gpt-4.1",
-        #     messages=[
-        #         {
-        #             "role": "system",
-        #             "content": "You are a helpful assistant that can access web pages and extract information.",
-        #         },
-        #         {"role": "user", "content": open_api_prompt},
-        #     ],
-        #     # tools=[{"type": "web_search_preview"}],
-
-
-        oneagent_version_response= openai_client.responses.parse(
-            model="gpt-4o",  # Use gpt-4o instead of gpt-4.1
-            input=oneagent_version_prompt,
-            tools=[{"type": "web_search_preview"}],
-            text_format=ComponentLatestReleaseVersion
-        )
-        result = oneagent_version_response.output_parsed
-        if result is None:
-            return {"error": "Failed to extract the latest OneAgent version."}
+        request_body = await request.json()
+        selected_items = request_body.get("selectedItems", [])
         
-        print(f"Received response from OpenAI: {result}")
-
-        return result.version
+        # Check if any selected item contains "oneagent" key
+        oneagent_selected = False
+        for item in selected_items:
+            if isinstance(item, dict) and "oneagent" in item:
+                oneagent_selected = True
+                break
         
-        # one_agent_latest_version = result.version.strip()
-
-        # return {"oneAgentLatestVersion": one_agent_latest_version}
+        if oneagent_selected:
+            return await oneagent_processor.process_dynatrace_release_news()
+        else:
+            return JSONResponse(
+                status_code=400, 
+                content={"error": "No OneAgent release notes selected. Please select OneAgent to proceed."}
+            )
+            
     except Exception as e:
-        return {"error": str(e)}
-
-
-
-# Helper function for getting the summary for a given version
-async def get_oneagent_release_summary(version: str):
-    try:
-        # Option 1: Use improved prompt with web_search_preview
-        summary_prompt = get_oneagent_summary_prompt(version)
-        print(f"Sending summary prompt to OpenAI: {summary_prompt}")
-        
-        summary_response = openai_client.responses.create(
-            model="gpt-4o",  # Use gpt-4o instead of gpt-4.1 for better web access
-            input=summary_prompt,
-            tools=[{"type": "web_search_preview"}]
-        )
-        summary = summary_response.output_text
-        print(f"Received summary from OpenAI: {summary}")
-        
-        if summary is None:
-            return {"error": "Failed to get summary from OpenAI."}
-                
-        return {"summary": summary}
-    except Exception as e:
-        return {"error": str(e)}
-
+        return JSONResponse(status_code=400, content={"error": f"Invalid request format: {str(e)}"})

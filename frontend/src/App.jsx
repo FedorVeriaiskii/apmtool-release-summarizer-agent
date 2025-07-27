@@ -23,10 +23,38 @@ function App() {
 
   const handleReleaseNewsClick = async () => {
     setReleaseNews("Loading...");
+    
+    // Function to convert display name to element id
+    const getElementId = (itemName) => {
+      const idMap = {
+        "dynatrace_managed": "Dynatrace Managed release notes",
+        "oneagent": "OneAgent release notes",
+        "active_gate": "ActiveGate release notes",
+        "dynatrace_api": "Dynatrace API changelog",
+        "dynatrace_operator": "Dynatrace Operator release notes"
+      };
+      // Find the key that matches the itemName value
+      const elementId = Object.keys(idMap).find(key => idMap[key] === itemName);
+      return elementId || itemName.toLowerCase().replace(/\s+/g, '_');
+    };
+    
+    // Get selected items as array of objects with element id as key and value as value
+    const selectedItems = releaseNoteItems
+      .map((item, idx) => ({
+        elementId: getElementId(item),
+        value: item,
+        selected: checkedItems[idx]
+      }))
+      .filter(item => item.selected)
+      .map(item => ({ [item.elementId]: item.value }));
+    
+    alert("Selected items:\n" + JSON.stringify(selectedItems, null, 2));
+    
     try {
-      const res = await fetch("http://localhost:8000/api/oneagent-release-news", {
+      const res = await fetch("http://localhost:8000/api/dynatrace-release-news-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedItems: selectedItems }),
       });
       let data;
       try {
@@ -52,11 +80,37 @@ function App() {
   const handleDownloadPdf = async () => {
     let summary = '';
     let version = '';
+    
+    // Function to convert display name to element id
+    const getElementId = (itemName) => {
+      const idMap = {
+        "dynatrace_managed": "Dynatrace Managed release notes",
+        "oneagent": "OneAgent release notes",
+        "active_gate": "ActiveGate release notes",
+        "dynatrace_api": "Dynatrace API changelog",
+        "dynatrace_operator": "Dynatrace Operator release notes"
+      };
+      // Find the key that matches the itemName value
+      const elementId = Object.keys(idMap).find(key => idMap[key] === itemName);
+      return elementId || itemName.toLowerCase().replace(/\s+/g, '_');
+    };
+    
+    // Get selected items as array of objects with element id as key and value as value
+    const selectedItems = releaseNoteItems
+      .map((item, idx) => ({
+        elementId: getElementId(item),
+        value: item,
+        selected: checkedItems[idx]
+      }))
+      .filter(item => item.selected)
+      .map(item => ({ [item.elementId]: item.value }));
+    
     try {
       console.log('Downloading full release news...');
       const res = await fetch("http://localhost:8000/api/download-full-release-news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedItems: selectedItems }),
       });
       let data;
       try {
@@ -183,20 +237,34 @@ function App() {
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', margin: '2rem 0 0 0' }}>
             <button
               onClick={handleReleaseNewsClick}
+              disabled={!checkedItems.some(item => item)}
               style={{
                 padding: '0.85rem 1.7rem',
-                background: 'linear-gradient(90deg, #1496FF 60%, #1a3a6b 100%)',
-                color: '#fff',
+                background: checkedItems.some(item => item) 
+                  ? 'linear-gradient(90deg, #1496FF 60%, #1a3a6b 100%)' 
+                  : 'linear-gradient(90deg, #cccccc 60%, #999999 100%)',
+                color: checkedItems.some(item => item) ? '#fff' : '#666',
                 border: 'none',
                 borderRadius: '8px',
                 fontSize: '1.15rem',
                 fontWeight: 600,
-                cursor: 'pointer',
-                boxShadow: '0 2px 12px rgba(20,150,255,0.18)',
+                cursor: checkedItems.some(item => item) ? 'pointer' : 'not-allowed',
+                boxShadow: checkedItems.some(item => item) 
+                  ? '0 2px 12px rgba(20,150,255,0.18)' 
+                  : '0 2px 12px rgba(0,0,0,0.1)',
                 transition: 'background 0.2s',
+                opacity: checkedItems.some(item => item) ? 1 : 0.6,
               }}
-              onMouseOver={e => (e.target.style.background = '#1284EA')}
-              onMouseOut={e => (e.target.style.background = 'linear-gradient(90deg, #1496FF 60%, #1a3a6b 100%)')}
+              onMouseOver={e => {
+                if (checkedItems.some(item => item)) {
+                  e.target.style.background = '#1284EA';
+                }
+              }}
+              onMouseOut={e => {
+                if (checkedItems.some(item => item)) {
+                  e.target.style.background = 'linear-gradient(90deg, #1496FF 60%, #1a3a6b 100%)';
+                }
+              }}
             >
               Read summarized Latest Release news
             </button>
@@ -258,20 +326,87 @@ function App() {
             }}>
               Latest Oneagent Release <span style={{ color: '#1a3a6b', fontWeight: 600 }}>({latestVersion})</span>
             </h2>
-            <pre style={{
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              fontSize: '1.13rem',
-              lineHeight: '1.8',
-              color: '#1a3a6b',
-              background: 'none',
-              border: 'none',
-              margin: 0,
-              fontFamily: 'Inter, Arial, sans-serif',
-              zIndex: 1,
-              position: 'relative',
-              padding: 0,
-            }}>{releaseNews}</pre>
+            <div 
+              style={{
+                fontSize: '1.13rem',
+                lineHeight: '1.8',
+                color: '#1a3a6b',
+                background: 'rgba(255, 255, 255, 0.7)',
+                border: '1px solid rgba(20, 150, 255, 0.15)',
+                borderRadius: '12px',
+                margin: 0,
+                fontFamily: 'Inter, Arial, sans-serif',
+                zIndex: 1,
+                position: 'relative',
+                padding: '1.5rem',
+                boxShadow: '0 2px 8px rgba(20, 150, 255, 0.08)',
+                backdropFilter: 'blur(10px)',
+                maxHeight: '500px',
+                overflowY: 'auto',
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#1496FF rgba(255, 255, 255, 0.3)',
+              }}
+              dangerouslySetInnerHTML={{ __html: releaseNews }}
+            />
+            <style jsx>{`
+              div :global(h1) {
+                color: #1496FF !important;
+                font-size: 1.6rem !important;
+                font-weight: 700 !important;
+                margin: 1.5rem 0 1rem 0 !important;
+                border-bottom: 2px solid #1496FF !important;
+                padding-bottom: 0.5rem !important;
+              }
+              div :global(h2) {
+                color: #1a3a6b !important;
+                font-size: 1.4rem !important;
+                font-weight: 600 !important;
+                margin: 1.3rem 0 0.8rem 0 !important;
+                border-left: 4px solid #1496FF !important;
+                padding-left: 1rem !important;
+              }
+              div :global(h3) {
+                color: #1a3a6b !important;
+                font-size: 1.2rem !important;
+                font-weight: 600 !important;
+                margin: 1rem 0 0.6rem 0 !important;
+                text-decoration: underline !important;
+                text-decoration-color: #1496FF !important;
+                text-underline-offset: 0.3rem !important;
+              }
+              div :global(p) {
+                margin: 0.8rem 0 !important;
+                line-height: 1.6 !important;
+                white-space: pre-wrap !important;
+              }
+              div :global(ul) {
+                margin: 1rem 0 !important;
+                padding-left: 1.5rem !important;
+              }
+              div :global(li) {
+                margin: 0.4rem 0 !important;
+                list-style-type: disc !important;
+              }
+              div :global(strong) {
+                font-weight: 700 !important;
+                color: #1496FF !important;
+              }
+              div :global(em) {
+                font-style: italic !important;
+                color: #1a3a6b !important;
+              }
+              div :global(code) {
+                background-color: rgba(20, 150, 255, 0.1) !important;
+                padding: 0.2rem 0.4rem !important;
+                border-radius: 4px !important;
+                font-family: 'Courier New', monospace !important;
+                font-size: 0.9em !important;
+                color: #1496FF !important;
+              }
+              div :global(br) {
+                margin: 0.5rem 0 !important;
+              }
+            `}</style>
           </div>
         )}
       </main>

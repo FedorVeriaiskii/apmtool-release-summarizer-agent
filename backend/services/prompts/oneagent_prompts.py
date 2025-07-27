@@ -1,11 +1,14 @@
+# OneAgent-specific prompts for Dynatrace release notes processing
+
 def get_oneagent_version_prompt() -> str:
+    """Returns prompt to extract latest OneAgent version from docs"""
     return (
         "open https://docs.dynatrace.com/managed/whats-new/oneagent;\n"
         "find the latest version in the table column 'version'. The latest version is the largest number. Print only that number."
-        # "search for the latest version in the 'version' table column. latest version is the biggest number. output that number only"
     )
 
 def get_oneagent_summary_prompt(version: str) -> str:
+    """Returns prompt to generate comprehensive summary for specific OneAgent version"""
     return f"""
              Please access the Dynatrace OneAgent release notes page for version {version} and provide a comprehensive summary.
         
