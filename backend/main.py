@@ -21,6 +21,7 @@ from services.process_oneagent_release_notes import ProcessOneAgentReleaseNotes
 from services.process_activegate_release_notes import ProcessActiveGateReleaseNotes
 from services.process_dynatrace_api_release_notes import ProcessDynatraceApiReleaseNotes
 from services.process_dynatrace_operator_release_notes import ProcessDynatraceOperatorReleaseNotes
+from services.process_dynatrace_managed_release_notes import ProcessDynatraceManagedReleaseNotes
 
 
 load_dotenv()
@@ -48,6 +49,7 @@ oneagent_processor = ProcessOneAgentReleaseNotes(openai_client)
 activegate_processor = ProcessActiveGateReleaseNotes(openai_client)
 dynatrace_api_processor = ProcessDynatraceApiReleaseNotes(openai_client)
 dynatrace_operator_processor = ProcessDynatraceOperatorReleaseNotes(openai_client)
+dynatrace_managed_processor = ProcessDynatraceManagedReleaseNotes(openai_client)
 
 
 class ComponentLatestReleaseVersion(BaseModel):
@@ -76,6 +78,7 @@ async def build_dynatrace_release_news_summary(request: Request):
         activegate_selected = False
         dynatrace_api_selected = False
         dynatrace_operator_selected = False
+        dynatrace_managed_selected = False
         
         for item in selected_items:
             if isinstance(item, dict):
@@ -87,6 +90,8 @@ async def build_dynatrace_release_news_summary(request: Request):
                     dynatrace_api_selected = True
                 elif "dynatrace_operator" in item:
                     dynatrace_operator_selected = True
+                elif "dynatrace_managed" in item:
+                    dynatrace_managed_selected = True
         
         # Initialize response object
         response = {
@@ -103,6 +108,10 @@ async def build_dynatrace_release_news_summary(request: Request):
                 "summary": ""
             },
             "dynatrace-operator": {
+                "latestVersion": "",
+                "summary": ""
+            },
+            "dynatrace-managed": {
                 "latestVersion": "",
                 "summary": ""
             }
@@ -128,6 +137,10 @@ async def build_dynatrace_release_news_summary(request: Request):
             tasks.append(dynatrace_operator_processor.process_dynatrace_release_news())
             task_mapping.append(("dynatrace-operator", "dynatraceOperatorLatestVersion"))
         
+        if dynatrace_managed_selected:
+            tasks.append(dynatrace_managed_processor.process_dynatrace_release_news())
+            task_mapping.append(("dynatrace-managed", "dynatraceManagedLatestVersion"))
+        
         # Execute all selected processors in parallel
         if tasks:
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -152,10 +165,10 @@ async def build_dynatrace_release_news_summary(request: Request):
                 response[component_key]["summary"] = result.get("summary", "")
         
         # Check if at least one component was selected
-        if not oneagent_selected and not activegate_selected and not dynatrace_api_selected and not dynatrace_operator_selected:
+        if not oneagent_selected and not activegate_selected and not dynatrace_api_selected and not dynatrace_operator_selected and not dynatrace_managed_selected:
             return JSONResponse(
                 status_code=400, 
-                content={"error": "No supported release notes selected. Please select OneAgent, ActiveGate, Dynatrace API, or Dynatrace Operator to proceed."}
+                content={"error": "No supported release notes selected. Please select OneAgent, ActiveGate, Dynatrace API, Dynatrace Operator, or Dynatrace Managed to proceed."}
             )
         
         return response
