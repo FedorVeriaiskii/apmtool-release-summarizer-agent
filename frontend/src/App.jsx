@@ -105,6 +105,15 @@ function App() {
         });
       }
       
+      // Check and add Dynatrace Managed data if available
+      if (data["dynatrace-managed"] && data["dynatrace-managed"].summary) {
+        summaries.push({
+          component: "Dynatrace Managed", 
+          summary: data["dynatrace-managed"].summary,
+          version: data["dynatrace-managed"].latestVersion
+        });
+      }
+      
       if (summaries.length > 0) {
         setReleaseNews(summaries);
       } else if (data.error) {
@@ -163,7 +172,7 @@ function App() {
         summary = "Error: Unexpected response: " + text.slice(0, 200);
         version = '';
       }
-      if (data && (data.oneagent || data["active-gate"] || data["dynatrace-api"] || data["dynatrace-operator"])) {
+      if (data && (data.oneagent || data["active-gate"] || data["dynatrace-api"] || data["dynatrace-operator"] || data["dynatrace-managed"])) {
         // Determine which component has data for PDF (prioritize in order)
         if (data.oneagent && data.oneagent.summary) {
           summary = data.oneagent.summary;
@@ -177,6 +186,9 @@ function App() {
         } else if (data["dynatrace-operator"] && data["dynatrace-operator"].summary) {
           summary = data["dynatrace-operator"].summary;
           version = data["dynatrace-operator"].latestVersion;
+        } else if (data["dynatrace-managed"] && data["dynatrace-managed"].summary) {
+          summary = data["dynatrace-managed"].summary;
+          version = data["dynatrace-managed"].latestVersion;
         } else {
           summary = "No summary data available for selected components.";
           version = '';
