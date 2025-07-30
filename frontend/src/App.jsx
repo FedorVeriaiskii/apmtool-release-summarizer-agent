@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 
 function App() {
-  const [releaseNews, setReleaseNews] = useState("");
-  const [latestVersion, setLatestVersion] = useState("");
+  const [releaseNews, setReleaseNews] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const releaseNoteItems = [
     "Dynatrace Managed release notes",
@@ -22,7 +22,8 @@ function App() {
   };
 
   const handleReleaseNewsClick = async () => {
-    setReleaseNews("Loading...");
+    setIsLoading(true);
+    setReleaseNews([]);
     
     // Function to convert display name to element id
     const getElementId = (itemName) => {
@@ -48,8 +49,6 @@ function App() {
       .filter(item => item.selected)
       .map(item => ({ [item.elementId]: item.value }));
     
-    alert("Selected items:\n" + JSON.stringify(selectedItems, null, 2));
-    
     try {
       const res = await fetch("http://localhost:8000/api/dynatrace-release-news-summary", {
         method: "POST",
@@ -57,23 +56,66 @@ function App() {
         body: JSON.stringify({ selectedItems: selectedItems }),
       });
       let data;
+      console.log('Response data:', res);
       try {
         data = await res.json();
       } catch (jsonError) {
         // If response is not valid JSON, show raw text
         const text = await res.text();
-        setReleaseNews("Error: Unexpected response: " + text.slice(0, 200));
+        setReleaseNews([{ component: "Error", summary: "Unexpected response: " + text.slice(0, 200), version: "" }]);
+        setIsLoading(false);
         return;
       }
-      if (data.summary) {
-        setReleaseNews(data.summary);
-        setLatestVersion(data.oneAgentLatestVersion);
+      
+      const summaries = [];
+      
+      // Check and add OneAgent data if available
+      if (data.oneagent && data.oneagent.summary) {
+        summaries.push({
+          component: "OneAgent",
+          summary: data.oneagent.summary,
+          version: data.oneagent.latestVersion
+        });
+      }
+      
+      // Check and add ActiveGate data if available
+      if (data["active-gate"] && data["active-gate"].summary) {
+        summaries.push({
+          component: "ActiveGate", 
+          summary: data["active-gate"].summary,
+          version: data["active-gate"].latestVersion
+        });
+      }
+      
+      // Check and add Dynatrace API data if available
+      if (data["dynatrace-api"] && data["dynatrace-api"].summary) {
+        summaries.push({
+          component: "Dynatrace API", 
+          summary: data["dynatrace-api"].summary,
+          version: data["dynatrace-api"].latestVersion
+        });
+      }
+      
+      // Check and add Dynatrace Operator data if available
+      if (data["dynatrace-operator"] && data["dynatrace-operator"].summary) {
+        summaries.push({
+          component: "Dynatrace Operator", 
+          summary: data["dynatrace-operator"].summary,
+          version: data["dynatrace-operator"].latestVersion
+        });
+      }
+      
+      if (summaries.length > 0) {
+        setReleaseNews(summaries);
+      } else if (data.error) {
+        setReleaseNews([{ component: "Error", summary: data.error, version: "" }]);
       } else {
-        setReleaseNews("Error: " + (data.error || "Unknown error"));
+        setReleaseNews([{ component: "Info", summary: "No summary data available for selected components.", version: "" }]);
       }
     } catch (error) {
-      setReleaseNews("Error: " + error.message);
+      setReleaseNews([{ component: "Error", summary: error.message, version: "" }]);
     }
+    setIsLoading(false);
   };
 
   // Download release news as PDF (copy of fetch logic)
@@ -107,7 +149,7 @@ function App() {
     
     try {
       console.log('Downloading full release news...');
-      const res = await fetch("http://localhost:8000/api/download-full-release-news", {
+      const res = await fetch("http://localhost:8000/api/dynatrace-release-news-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedItems: selectedItems }),
@@ -121,9 +163,24 @@ function App() {
         summary = "Error: Unexpected response: " + text.slice(0, 200);
         version = '';
       }
-      if (data && data.summary) {
-        summary = data.summary;
-        version = data.oneAgentLatestVersion;
+      if (data && (data.oneagent || data["active-gate"] || data["dynatrace-api"] || data["dynatrace-operator"])) {
+        // Determine which component has data for PDF (prioritize in order)
+        if (data.oneagent && data.oneagent.summary) {
+          summary = data.oneagent.summary;
+          version = data.oneagent.latestVersion;
+        } else if (data["active-gate"] && data["active-gate"].summary) {
+          summary = data["active-gate"].summary;
+          version = data["active-gate"].latestVersion;
+        } else if (data["dynatrace-api"] && data["dynatrace-api"].summary) {
+          summary = data["dynatrace-api"].summary;
+          version = data["dynatrace-api"].latestVersion;
+        } else if (data["dynatrace-operator"] && data["dynatrace-operator"].summary) {
+          summary = data["dynatrace-operator"].summary;
+          version = data["dynatrace-operator"].latestVersion;
+        } else {
+          summary = "No summary data available for selected components.";
+          version = '';
+        }
       } else {
         summary = "Error: " + (data.error || "Unknown error");
         version = '';
@@ -132,7 +189,7 @@ function App() {
       summary = "Error: " + error.message;
       version = '';
     }
-    const docTitle = version ? `Latest Oneagent Release (${version})` : 'Latest Release News';
+    const docTitle = version ? `Latest Dynatrace Release (${version})` : 'Latest Release News';
     const content = `${docTitle}\n\n${summary}`;
     // Create a simple PDF using jsPDF
     const script = document.createElement('script');
@@ -290,126 +347,156 @@ function App() {
             </button>
           </div>
         </div>
-        {releaseNews && (
-          <div style={{
-            background: 'linear-gradient(135deg, #f7f9fa 0%, #e3e8ee 100%)',
-            borderRadius: '22px',
-            boxShadow: '0 8px 40px rgba(20,150,255,0.13)',
-            padding: '3rem 2.5rem',
-            width: '100vw',
-            marginBottom: '2.5rem',
-            border: '1px solid #e3e8ee',
-            position: 'relative',
-            overflow: 'hidden',
-            boxSizing: 'border-box',
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: '-40px',
-              right: '-40px',
-              width: '120px',
-              height: '120px',
-              background: 'radial-gradient(circle, #1496FF 0%, #1a3a6b 100%)',
-              opacity: 0.12,
-              borderRadius: '50%',
-              zIndex: 0,
-            }} />
-            <h2 style={{
-              color: '#1496FF',
-              marginBottom: '1.5rem',
-              fontWeight: 700,
-              fontSize: '2rem',
-              letterSpacing: '0.01em',
-              textShadow: '0 2px 16px rgba(20,150,255,0.10)',
-              zIndex: 1,
-              position: 'relative',
-            }}>
-              Latest Oneagent Release <span style={{ color: '#1a3a6b', fontWeight: 600 }}>({latestVersion})</span>
-            </h2>
-            <div 
-              style={{
-                fontSize: '1.13rem',
-                lineHeight: '1.8',
-                color: '#1a3a6b',
-                background: 'rgba(255, 255, 255, 0.7)',
-                border: '1px solid rgba(20, 150, 255, 0.15)',
-                borderRadius: '12px',
-                margin: 0,
-                fontFamily: 'Inter, Arial, sans-serif',
-                zIndex: 1,
+        {(isLoading || releaseNews.length > 0) && (
+          <div>
+            {isLoading && (
+              <div style={{
+                background: 'linear-gradient(135deg, #f7f9fa 0%, #e3e8ee 100%)',
+                borderRadius: '22px',
+                boxShadow: '0 8px 40px rgba(20,150,255,0.13)',
+                padding: '3rem 2.5rem',
+                width: '100vw',
+                marginBottom: '2.5rem',
+                border: '1px solid #e3e8ee',
                 position: 'relative',
-                padding: '1.5rem',
-                boxShadow: '0 2px 8px rgba(20, 150, 255, 0.08)',
-                backdropFilter: 'blur(10px)',
-                maxHeight: '500px',
-                overflowY: 'auto',
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#1496FF rgba(255, 255, 255, 0.3)',
-              }}
-              dangerouslySetInnerHTML={{ __html: releaseNews }}
-            />
-            <style jsx>{`
-              div :global(h1) {
-                color: #1496FF !important;
-                font-size: 1.6rem !important;
-                font-weight: 700 !important;
-                margin: 1.5rem 0 1rem 0 !important;
-                border-bottom: 2px solid #1496FF !important;
-                padding-bottom: 0.5rem !important;
-              }
-              div :global(h2) {
-                color: #1a3a6b !important;
-                font-size: 1.4rem !important;
-                font-weight: 600 !important;
-                margin: 1.3rem 0 0.8rem 0 !important;
-                border-left: 4px solid #1496FF !important;
-                padding-left: 1rem !important;
-              }
-              div :global(h3) {
-                color: #1a3a6b !important;
-                font-size: 1.2rem !important;
-                font-weight: 600 !important;
-                margin: 1rem 0 0.6rem 0 !important;
-                text-decoration: underline !important;
-                text-decoration-color: #1496FF !important;
-                text-underline-offset: 0.3rem !important;
-              }
-              div :global(p) {
-                margin: 0.8rem 0 !important;
-                line-height: 1.6 !important;
-                white-space: pre-wrap !important;
-              }
-              div :global(ul) {
-                margin: 1rem 0 !important;
-                padding-left: 1.5rem !important;
-              }
-              div :global(li) {
-                margin: 0.4rem 0 !important;
-                list-style-type: disc !important;
-              }
-              div :global(strong) {
-                font-weight: 700 !important;
-                color: #1496FF !important;
-              }
-              div :global(em) {
-                font-style: italic !important;
-                color: #1a3a6b !important;
-              }
-              div :global(code) {
-                background-color: rgba(20, 150, 255, 0.1) !important;
-                padding: 0.2rem 0.4rem !important;
-                border-radius: 4px !important;
-                font-family: 'Courier New', monospace !important;
-                font-size: 0.9em !important;
-                color: #1496FF !important;
-              }
-              div :global(br) {
-                margin: 0.5rem 0 !important;
-              }
-            `}</style>
+                overflow: 'hidden',
+                boxSizing: 'border-box',
+                textAlign: 'center',
+              }}>
+                <h2 style={{
+                  color: '#1496FF',
+                  marginBottom: '1.5rem',
+                  fontWeight: 700,
+                  fontSize: '2rem',
+                }}>
+                  Loading...
+                </h2>
+              </div>
+            )}
+            {releaseNews.map((releaseData, index) => (
+              <div key={index} style={{
+                background: 'linear-gradient(135deg, #f7f9fa 0%, #e3e8ee 100%)',
+                borderRadius: '22px',
+                boxShadow: '0 8px 40px rgba(20,150,255,0.13)',
+                padding: '3rem 2.5rem',
+                width: '100vw',
+                marginBottom: '2.5rem',
+                border: '1px solid #e3e8ee',
+                position: 'relative',
+                overflow: 'hidden',
+                boxSizing: 'border-box',
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '-40px',
+                  right: '-40px',
+                  width: '120px',
+                  height: '120px',
+                  background: 'radial-gradient(circle, #1496FF 0%, #1a3a6b 100%)',
+                  opacity: 0.12,
+                  borderRadius: '50%',
+                  zIndex: 0,
+                }} />
+                <h2 style={{
+                  color: '#1496FF',
+                  marginBottom: '1.5rem',
+                  fontWeight: 700,
+                  fontSize: '2rem',
+                  letterSpacing: '0.01em',
+                  textShadow: '0 2px 16px rgba(20,150,255,0.10)',
+                  zIndex: 1,
+                  position: 'relative',
+                }}>
+                  Latest {releaseData.component} Release {releaseData.version && (
+                    <span style={{ color: '#1a3a6b', fontWeight: 600 }}>({releaseData.version})</span>
+                  )}
+                </h2>
+                <div 
+                  style={{
+                    fontSize: '1.13rem',
+                    lineHeight: '1.8',
+                    color: '#1a3a6b',
+                    background: 'rgba(255, 255, 255, 0.7)',
+                    border: '1px solid rgba(20, 150, 255, 0.15)',
+                    borderRadius: '12px',
+                    margin: 0,
+                    fontFamily: 'Inter, Arial, sans-serif',
+                    zIndex: 1,
+                    position: 'relative',
+                    padding: '1.5rem',
+                    boxShadow: '0 2px 8px rgba(20, 150, 255, 0.08)',
+                    backdropFilter: 'blur(10px)',
+                    maxHeight: '500px',
+                    overflowY: 'auto',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#1496FF rgba(255, 255, 255, 0.3)',
+                  }}
+                  dangerouslySetInnerHTML={{ __html: releaseData.summary }}
+                />
+              </div>
+            ))}
           </div>
         )}
       </main>
+      <style jsx global>{`
+        div :global(h1) {
+          color: #1496FF !important;
+          font-size: 1.6rem !important;
+          font-weight: 700 !important;
+          margin: 1.5rem 0 1rem 0 !important;
+          border-bottom: 2px solid #1496FF !important;
+          padding-bottom: 0.5rem !important;
+        }
+        div :global(h2) {
+          color: #1a3a6b !important;
+          font-size: 1.4rem !important;
+          font-weight: 600 !important;
+          margin: 1.3rem 0 0.8rem 0 !important;
+          border-left: 4px solid #1496FF !important;
+          padding-left: 1rem !important;
+        }
+        div :global(h3) {
+          color: #1a3a6b !important;
+          font-size: 1.2rem !important;
+          font-weight: 600 !important;
+          margin: 1rem 0 0.6rem 0 !important;
+          text-decoration: underline !important;
+          text-decoration-color: #1496FF !important;
+          text-underline-offset: 0.3rem !important;
+        }
+        div :global(p) {
+          margin: 0.8rem 0 !important;
+          line-height: 1.6 !important;
+          white-space: pre-wrap !important;
+        }
+        div :global(ul) {
+          margin: 1rem 0 !important;
+          padding-left: 1.5rem !important;
+        }
+        div :global(li) {
+          margin: 0.4rem 0 !important;
+          list-style-type: disc !important;
+        }
+        div :global(strong) {
+          font-weight: 700 !important;
+          color: #1496FF !important;
+        }
+        div :global(em) {
+          font-style: italic !important;
+          color: #1a3a6b !important;
+        }
+        div :global(code) {
+          background-color: rgba(20, 150, 255, 0.1) !important;
+          padding: 0.2rem 0.4rem !important;
+          border-radius: 4px !important;
+          font-family: 'Courier New', monospace !important;
+          font-size: 0.9em !important;
+          color: #1496FF !important;
+        }
+        div :global(br) {
+          margin: 0.5rem 0 !important;
+        }
+      `}</style>
     </div>
   );
 }
