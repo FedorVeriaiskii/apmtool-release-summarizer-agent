@@ -68,6 +68,15 @@ function App() {
       }
       
       const summaries = [];
+
+      // Check and add Dynatrace Managed data if available
+      if (data["dynatrace-managed"] && data["dynatrace-managed"].summary) {
+        summaries.push({
+          component: "Dynatrace Managed", 
+          summary: data["dynatrace-managed"].summary,
+          version: data["dynatrace-managed"].latestVersion
+        });
+      }
       
       // Check and add OneAgent data if available
       if (data.oneagent && data.oneagent.summary) {
@@ -102,15 +111,6 @@ function App() {
           component: "Dynatrace Operator", 
           summary: data["dynatrace-operator"].summary,
           version: data["dynatrace-operator"].latestVersion
-        });
-      }
-      
-      // Check and add Dynatrace Managed data if available
-      if (data["dynatrace-managed"] && data["dynatrace-managed"].summary) {
-        summaries.push({
-          component: "Dynatrace Managed", 
-          summary: data["dynatrace-managed"].summary,
-          version: data["dynatrace-managed"].latestVersion
         });
       }
       
