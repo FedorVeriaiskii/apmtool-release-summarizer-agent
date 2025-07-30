@@ -3,16 +3,11 @@
 import logging
 import openai
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from .data_models import ComponentLatestReleaseVersion
 from .prompts.activegate_prompts import get_activegate_summary_prompt, get_activegate_version_prompt
 
 
 logger = logging.getLogger(__name__)
-
-
-class ComponentLatestReleaseVersion(BaseModel):
-    """Pydantic model for ActiveGate version response"""
-    version: str
 
 
 class ProcessActiveGateReleaseNotes:

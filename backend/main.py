@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 import openai
-from pydantic import BaseModel
+from services.data_models import ComponentLatestReleaseVersion
 from services.process_oneagent_release_notes import ProcessOneAgentReleaseNotes
 from services.process_activegate_release_notes import ProcessActiveGateReleaseNotes
 from services.process_dynatrace_api_release_notes import ProcessDynatraceApiReleaseNotes
@@ -50,12 +50,6 @@ activegate_processor = ProcessActiveGateReleaseNotes(openai_client)
 dynatrace_api_processor = ProcessDynatraceApiReleaseNotes(openai_client)
 dynatrace_operator_processor = ProcessDynatraceOperatorReleaseNotes(openai_client)
 dynatrace_managed_processor = ProcessDynatraceManagedReleaseNotes(openai_client)
-
-
-class ComponentLatestReleaseVersion(BaseModel):
-    """Pydantic model for version responses"""
-    version: str
-
 
 
 @app.get("/")

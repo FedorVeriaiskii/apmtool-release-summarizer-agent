@@ -3,16 +3,11 @@
 import logging
 import openai
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from .data_models import ComponentLatestReleaseVersion
 from .prompts.dynatrace_api_prompts import get_dynatrace_api_summary_prompt, get_dynatrace_api_version_prompt
 
 
 logger = logging.getLogger(__name__)
-
-
-class ComponentLatestReleaseVersion(BaseModel):
-    """Pydantic model for Dynatrace API version response"""
-    version: str
 
 
 class ProcessDynatraceApiReleaseNotes:

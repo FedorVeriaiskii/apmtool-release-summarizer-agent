@@ -3,16 +3,11 @@
 import logging
 import openai
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from .data_models import ComponentLatestReleaseVersion
 from .prompts.oneagent_prompts import get_oneagent_summary_prompt, get_oneagent_version_prompt
 
 
 logger = logging.getLogger(__name__)
-
-
-class ComponentLatestReleaseVersion(BaseModel):
-    """Pydantic model for OneAgent version response"""
-    version: str
 
 
 class ProcessOneAgentReleaseNotes:
