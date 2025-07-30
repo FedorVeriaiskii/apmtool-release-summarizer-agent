@@ -2,12 +2,17 @@
 # FastAPI backend for Dynatrace Release Notes Summarizer Agent
 # Provides REST API endpoints for processing and summarizing Dynatrace release notes
 
+import sys
+import os
+# Add the current directory to Python path to find local modules
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import asyncio
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-import os
 from dotenv import load_dotenv
 
 import openai
@@ -102,42 +107,49 @@ async def build_dynatrace_release_news_summary(request: Request):
                 "summary": ""
             }
         }
+
+        # Prepare tasks for parallel execution
+        tasks = []
+        task_mapping = []
         
-        # Process OneAgent if selected
         if oneagent_selected:
-            oneagent_result = await oneagent_processor.process_dynatrace_release_news()
-            if isinstance(oneagent_result, JSONResponse):
-                # Handle error case
-                return oneagent_result
-            response["oneagent"]["latestVersion"] = oneagent_result.get("oneAgentLatestVersion", "")
-            response["oneagent"]["summary"] = oneagent_result.get("summary", "")
+            tasks.append(oneagent_processor.process_dynatrace_release_news())
+            task_mapping.append(("oneagent", "oneAgentLatestVersion"))
         
-        # Process ActiveGate if selected
         if activegate_selected:
-            activegate_result = await activegate_processor.process_dynatrace_release_news()
-            if isinstance(activegate_result, JSONResponse):
-                # Handle error case
-                return activegate_result
-            response["active-gate"]["latestVersion"] = activegate_result.get("activeGateLatestVersion", "")
-            response["active-gate"]["summary"] = activegate_result.get("summary", "")
+            tasks.append(activegate_processor.process_dynatrace_release_news())
+            task_mapping.append(("active-gate", "activeGateLatestVersion"))
         
-        # Process Dynatrace API if selected
         if dynatrace_api_selected:
-            dynatrace_api_result = await dynatrace_api_processor.process_dynatrace_release_news()
-            if isinstance(dynatrace_api_result, JSONResponse):
-                # Handle error case
-                return dynatrace_api_result
-            response["dynatrace-api"]["latestVersion"] = dynatrace_api_result.get("dynatraceApiLatestVersion", "")
-            response["dynatrace-api"]["summary"] = dynatrace_api_result.get("summary", "")
+            tasks.append(dynatrace_api_processor.process_dynatrace_release_news())
+            task_mapping.append(("dynatrace-api", "dynatraceApiLatestVersion"))
         
-        # Process Dynatrace Operator if selected
         if dynatrace_operator_selected:
-            dynatrace_operator_result = await dynatrace_operator_processor.process_dynatrace_release_news()
-            if isinstance(dynatrace_operator_result, JSONResponse):
-                # Handle error case
-                return dynatrace_operator_result
-            response["dynatrace-operator"]["latestVersion"] = dynatrace_operator_result.get("dynatraceOperatorLatestVersion", "")
-            response["dynatrace-operator"]["summary"] = dynatrace_operator_result.get("summary", "")
+            tasks.append(dynatrace_operator_processor.process_dynatrace_release_news())
+            task_mapping.append(("dynatrace-operator", "dynatraceOperatorLatestVersion"))
+        
+        # Execute all selected processors in parallel
+        if tasks:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Process results
+            for i, result in enumerate(results):
+                component_key, version_key = task_mapping[i]
+                
+                # Check if result is an exception
+                if isinstance(result, Exception):
+                    return JSONResponse(
+                        status_code=500, 
+                        content={"error": f"Error processing {component_key}: {str(result)}"}
+                    )
+                
+                # Check if result is a JSONResponse (error case)
+                if isinstance(result, JSONResponse):
+                    return result
+                
+                # Update response with successful result
+                response[component_key]["latestVersion"] = result.get(version_key, "")
+                response[component_key]["summary"] = result.get("summary", "")
         
         # Check if at least one component was selected
         if not oneagent_selected and not activegate_selected and not dynatrace_api_selected and not dynatrace_operator_selected:
