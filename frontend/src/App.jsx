@@ -348,14 +348,18 @@ function App() {
           </div>
         </div>
         {(isLoading || releaseNews.length > 0) && (
-          <div>
+          <div style={{
+            width: '100vw',
+            padding: '0 2rem',
+            boxSizing: 'border-box',
+          }}>
             {isLoading && (
               <div style={{
                 background: 'linear-gradient(135deg, #f7f9fa 0%, #e3e8ee 100%)',
                 borderRadius: '22px',
                 boxShadow: '0 8px 40px rgba(20,150,255,0.13)',
                 padding: '3rem 2.5rem',
-                width: '100vw',
+                width: '100%',
                 marginBottom: '2.5rem',
                 border: '1px solid #e3e8ee',
                 position: 'relative',
@@ -373,68 +377,76 @@ function App() {
                 </h2>
               </div>
             )}
-            {releaseNews.map((releaseData, index) => (
-              <div key={index} style={{
-                background: 'linear-gradient(135deg, #f7f9fa 0%, #e3e8ee 100%)',
-                borderRadius: '22px',
-                boxShadow: '0 8px 40px rgba(20,150,255,0.13)',
-                padding: '3rem 2.5rem',
-                width: '100vw',
-                marginBottom: '2.5rem',
-                border: '1px solid #e3e8ee',
-                position: 'relative',
-                overflow: 'hidden',
-                boxSizing: 'border-box',
-              }}>
-                <div style={{
-                  position: 'absolute',
-                  top: '-40px',
-                  right: '-40px',
-                  width: '120px',
-                  height: '120px',
-                  background: 'radial-gradient(circle, #1496FF 0%, #1a3a6b 100%)',
-                  opacity: 0.12,
-                  borderRadius: '50%',
-                  zIndex: 0,
-                }} />
-                <h2 style={{
-                  color: '#1496FF',
-                  marginBottom: '1.5rem',
-                  fontWeight: 700,
-                  fontSize: '2rem',
-                  letterSpacing: '0.01em',
-                  textShadow: '0 2px 16px rgba(20,150,255,0.10)',
-                  zIndex: 1,
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))',
+              gap: '2rem',
+              width: '100%',
+            }}>
+              {releaseNews.map((releaseData, index) => (
+                <div key={index} style={{
+                  background: 'linear-gradient(135deg, #f7f9fa 0%, #e3e8ee 100%)',
+                  borderRadius: '22px',
+                  boxShadow: '0 8px 40px rgba(20,150,255,0.13)',
+                  padding: '2rem 1.5rem',
+                  border: '1px solid #e3e8ee',
                   position: 'relative',
+                  overflow: 'hidden',
+                  boxSizing: 'border-box',
+                  minHeight: '300px',
                 }}>
-                  Latest {releaseData.component} Release {releaseData.version && (
-                    <span style={{ color: '#1a3a6b', fontWeight: 600 }}>({releaseData.version})</span>
-                  )}
-                </h2>
-                <div 
-                  style={{
-                    fontSize: '1.13rem',
-                    lineHeight: '1.8',
-                    color: '#1a3a6b',
-                    background: 'rgba(255, 255, 255, 0.7)',
-                    border: '1px solid rgba(20, 150, 255, 0.15)',
-                    borderRadius: '12px',
-                    margin: 0,
-                    fontFamily: 'Inter, Arial, sans-serif',
+                  <div style={{
+                    position: 'absolute',
+                    top: '-40px',
+                    right: '-40px',
+                    width: '120px',
+                    height: '120px',
+                    background: 'radial-gradient(circle, #1496FF 0%, #1a3a6b 100%)',
+                    opacity: 0.12,
+                    borderRadius: '50%',
+                    zIndex: 0,
+                  }} />
+                  <h2 style={{
+                    color: '#1496FF',
+                    marginBottom: '1.5rem',
+                    fontWeight: 700,
+                    fontSize: '1.6rem',
+                    letterSpacing: '0.01em',
+                    textShadow: '0 2px 16px rgba(20,150,255,0.10)',
                     zIndex: 1,
                     position: 'relative',
-                    padding: '1.5rem',
-                    boxShadow: '0 2px 8px rgba(20, 150, 255, 0.08)',
-                    backdropFilter: 'blur(10px)',
-                    maxHeight: '500px',
-                    overflowY: 'auto',
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: '#1496FF rgba(255, 255, 255, 0.3)',
-                  }}
-                  dangerouslySetInnerHTML={{ __html: releaseData.summary }}
-                />
-              </div>
-            ))}
+                  }}>
+                    Latest {releaseData.component} Release {releaseData.version && (
+                      <span style={{ color: '#1a3a6b', fontWeight: 600 }}>({releaseData.version})</span>
+                    )}
+                  </h2>
+                  <div 
+                    style={{
+                      fontSize: '1rem',
+                      lineHeight: '1.6',
+                      color: '#1a3a6b',
+                      background: 'rgba(255, 255, 255, 0.7)',
+                      border: '1px solid rgba(20, 150, 255, 0.15)',
+                      borderRadius: '12px',
+                      margin: 0,
+                      fontFamily: 'Inter, Arial, sans-serif',
+                      zIndex: 1,
+                      position: 'relative',
+                      padding: '1.2rem',
+                      boxShadow: '0 2px 8px rgba(20, 150, 255, 0.08)',
+                      backdropFilter: 'blur(10px)',
+                      maxHeight: '400px',
+                      overflowY: 'auto',
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: '#1496FF rgba(255, 255, 255, 0.3)',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {releaseData.summary}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>
