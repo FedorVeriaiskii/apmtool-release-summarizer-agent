@@ -14,17 +14,30 @@ frontend/dist-ssr
 *.local
 
 # Backend Python files
-backend/__pycache__/
-backend/*.pyc
-backend/.env
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
 *.pyo
 *.pyd
 .Python
+backend/.env
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+.pytest_cache/
+*.cover
+*.py,cover
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
 
 # Editor directories and files
 .vscode/*
