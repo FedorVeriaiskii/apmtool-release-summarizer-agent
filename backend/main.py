@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 import openai
-from services.data_models import ComponentLatestReleaseVersion
+from services.data_models import ComponentLatestReleaseVersion, ComponentLatestReleaseSummary
 from services.process_oneagent_release_notes import ProcessOneAgentReleaseNotes
 from services.process_activegate_release_notes import ProcessActiveGateReleaseNotes
 from services.process_dynatrace_api_release_notes import ProcessDynatraceApiReleaseNotes
@@ -91,23 +91,43 @@ async def build_dynatrace_release_news_summary(request: Request):
         response = {
             "oneagent": {
                 "latestVersion": "",
-                "summary": ""
+                "breaking_changes": "",
+                "announcements": "",
+                "technology_support": "",
+                "new_features": "",
+                "resolved_issues": ""
             },
             "active-gate": {
                 "latestVersion": "",
-                "summary": ""
+                "breaking_changes": "",
+                "announcements": "",
+                "technology_support": "",
+                "new_features": "",
+                "resolved_issues": ""
             },
             "dynatrace-api": {
                 "latestVersion": "",
-                "summary": ""
+                "breaking_changes": "",
+                "announcements": "",
+                "technology_support": "",
+                "new_features": "",
+                "resolved_issues": ""
             },
             "dynatrace-operator": {
                 "latestVersion": "",
-                "summary": ""
+                "breaking_changes": "",
+                "announcements": "",
+                "technology_support": "",
+                "new_features": "",
+                "resolved_issues": ""
             },
             "dynatrace-managed": {
                 "latestVersion": "",
-                "summary": ""
+                "breaking_changes": "",
+                "announcements": "",
+                "technology_support": "",
+                "new_features": "",
+                "resolved_issues": ""
             }
         }
 
@@ -154,9 +174,14 @@ async def build_dynatrace_release_news_summary(request: Request):
                 if isinstance(result, JSONResponse):
                     return result
                 
-                # Update response with successful result
-                response[component_key]["latestVersion"] = result.get(version_key, "")
-                response[component_key]["summary"] = result.get("summary", "")
+                # Update response with successful result from ComponentLatestReleaseSummary
+                if isinstance(result, ComponentLatestReleaseSummary):
+                    response[component_key]["latestVersion"] = result.latestVersion
+                    response[component_key]["breaking_changes"] = result.breaking_changes
+                    response[component_key]["announcements"] = result.announcements
+                    response[component_key]["technology_support"] = result.technology_support
+                    response[component_key]["new_features"] = result.new_features
+                    response[component_key]["resolved_issues"] = result.resolved_issues
         
         # Check if at least one component was selected
         if not oneagent_selected and not activegate_selected and not dynatrace_api_selected and not dynatrace_operator_selected and not dynatrace_managed_selected:

@@ -69,50 +69,53 @@ function App() {
       
       const summaries = [];
 
+      // Helper function to create structured summary from new format
+      const createStructuredSummary = (componentData, componentName) => {
+        if (!componentData || !componentData.latestVersion) return null;
+        
+        const sections = [];
+        if (componentData.breaking_changes) {
+          sections.push(`**🚨 Breaking Changes:**\n${componentData.breaking_changes}`);
+        }
+        if (componentData.announcements) {
+          sections.push(`**📢 Announcements:**\n${componentData.announcements}`);
+        }
+        if (componentData.new_features) {
+          sections.push(`**✨ New Features:**\n${componentData.new_features}`);
+        }
+        if (componentData.technology_support) {
+          sections.push(`**🔧 Technology Support:**\n${componentData.technology_support}`);
+        }
+        if (componentData.resolved_issues) {
+          sections.push(`**🐛 Resolved Issues:**\n${componentData.resolved_issues}`);
+        }
+        
+        return {
+          component: componentName,
+          summary: sections.join('\n\n'),
+          version: componentData.latestVersion
+        };
+      };
+
       // Check and add Dynatrace Managed data if available
-      if (data["dynatrace-managed"] && data["dynatrace-managed"].summary) {
-        summaries.push({
-          component: "Dynatrace Managed", 
-          summary: data["dynatrace-managed"].summary,
-          version: data["dynatrace-managed"].latestVersion
-        });
-      }
+      const managedSummary = createStructuredSummary(data["dynatrace-managed"], "Dynatrace Managed");
+      if (managedSummary) summaries.push(managedSummary);
       
       // Check and add OneAgent data if available
-      if (data.oneagent && data.oneagent.summary) {
-        summaries.push({
-          component: "OneAgent",
-          summary: data.oneagent.summary,
-          version: data.oneagent.latestVersion
-        });
-      }
+      const oneagentSummary = createStructuredSummary(data.oneagent, "OneAgent");
+      if (oneagentSummary) summaries.push(oneagentSummary);
       
       // Check and add ActiveGate data if available
-      if (data["active-gate"] && data["active-gate"].summary) {
-        summaries.push({
-          component: "ActiveGate", 
-          summary: data["active-gate"].summary,
-          version: data["active-gate"].latestVersion
-        });
-      }
+      const activegateSummary = createStructuredSummary(data["active-gate"], "ActiveGate");
+      if (activegateSummary) summaries.push(activegateSummary);
       
       // Check and add Dynatrace API data if available
-      if (data["dynatrace-api"] && data["dynatrace-api"].summary) {
-        summaries.push({
-          component: "Dynatrace API", 
-          summary: data["dynatrace-api"].summary,
-          version: data["dynatrace-api"].latestVersion
-        });
-      }
+      const apiSummary = createStructuredSummary(data["dynatrace-api"], "Dynatrace API");
+      if (apiSummary) summaries.push(apiSummary);
       
       // Check and add Dynatrace Operator data if available
-      if (data["dynatrace-operator"] && data["dynatrace-operator"].summary) {
-        summaries.push({
-          component: "Dynatrace Operator", 
-          summary: data["dynatrace-operator"].summary,
-          version: data["dynatrace-operator"].latestVersion
-        });
-      }
+      const operatorSummary = createStructuredSummary(data["dynatrace-operator"], "Dynatrace Operator");
+      if (operatorSummary) summaries.push(operatorSummary);
       
       if (summaries.length > 0) {
         setReleaseNews(summaries);
@@ -173,22 +176,51 @@ function App() {
         version = '';
       }
       if (data && (data.oneagent || data["active-gate"] || data["dynatrace-api"] || data["dynatrace-operator"] || data["dynatrace-managed"])) {
+        // Helper function to create structured summary from new format for PDF
+        const createPdfSummary = (componentData, componentName) => {
+          if (!componentData || !componentData.latestVersion) return null;
+          
+          const sections = [];
+          if (componentData.breaking_changes) {
+            sections.push(`Breaking Changes:\n${componentData.breaking_changes}`);
+          }
+          if (componentData.announcements) {
+            sections.push(`Announcements:\n${componentData.announcements}`);
+          }
+          if (componentData.new_features) {
+            sections.push(`New Features:\n${componentData.new_features}`);
+          }
+          if (componentData.technology_support) {
+            sections.push(`Technology Support:\n${componentData.technology_support}`);
+          }
+          if (componentData.resolved_issues) {
+            sections.push(`Resolved Issues:\n${componentData.resolved_issues}`);
+          }
+          
+          return {
+            summary: sections.join('\n\n'),
+            version: componentData.latestVersion,
+            component: componentName
+          };
+        };
+        
         // Determine which component has data for PDF (prioritize in order)
-        if (data.oneagent && data.oneagent.summary) {
-          summary = data.oneagent.summary;
-          version = data.oneagent.latestVersion;
-        } else if (data["active-gate"] && data["active-gate"].summary) {
-          summary = data["active-gate"].summary;
-          version = data["active-gate"].latestVersion;
-        } else if (data["dynatrace-api"] && data["dynatrace-api"].summary) {
-          summary = data["dynatrace-api"].summary;
-          version = data["dynatrace-api"].latestVersion;
-        } else if (data["dynatrace-operator"] && data["dynatrace-operator"].summary) {
-          summary = data["dynatrace-operator"].summary;
-          version = data["dynatrace-operator"].latestVersion;
-        } else if (data["dynatrace-managed"] && data["dynatrace-managed"].summary) {
-          summary = data["dynatrace-managed"].summary;
-          version = data["dynatrace-managed"].latestVersion;
+        let pdfData = null;
+        if (data.oneagent && data.oneagent.latestVersion) {
+          pdfData = createPdfSummary(data.oneagent, "OneAgent");
+        } else if (data["active-gate"] && data["active-gate"].latestVersion) {
+          pdfData = createPdfSummary(data["active-gate"], "ActiveGate");
+        } else if (data["dynatrace-api"] && data["dynatrace-api"].latestVersion) {
+          pdfData = createPdfSummary(data["dynatrace-api"], "Dynatrace API");
+        } else if (data["dynatrace-operator"] && data["dynatrace-operator"].latestVersion) {
+          pdfData = createPdfSummary(data["dynatrace-operator"], "Dynatrace Operator");
+        } else if (data["dynatrace-managed"] && data["dynatrace-managed"].latestVersion) {
+          pdfData = createPdfSummary(data["dynatrace-managed"], "Dynatrace Managed");
+        }
+        
+        if (pdfData) {
+          summary = pdfData.summary;
+          version = pdfData.version;
         } else {
           summary = "No summary data available for selected components.";
           version = '';
@@ -447,15 +479,18 @@ function App() {
                       padding: '1.2rem',
                       boxShadow: '0 2px 8px rgba(20, 150, 255, 0.08)',
                       backdropFilter: 'blur(10px)',
-                      maxHeight: '400px',
+                      maxHeight: '600px',
                       overflowY: 'auto',
                       scrollbarWidth: 'thin',
                       scrollbarColor: '#1496FF rgba(255, 255, 255, 0.3)',
                       whiteSpace: 'pre-wrap',
                     }}
-                  >
-                    {releaseData.summary}
-                  </div>
+                    dangerouslySetInnerHTML={{
+                      __html: releaseData.summary
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br/>')
+                    }}
+                  />
                 </div>
               ))}
             </div>
@@ -504,6 +539,14 @@ function App() {
         div :global(strong) {
           font-weight: 700 !important;
           color: #1496FF !important;
+          display: block !important;
+          margin: 1.2rem 0 0.6rem 0 !important;
+          border-left: 3px solid #1496FF !important;
+          padding-left: 0.8rem !important;
+          background: rgba(20, 150, 255, 0.05) !important;
+          padding: 0.6rem 0.8rem !important;
+          border-radius: 6px !important;
+          font-size: 1.1rem !important;
         }
         div :global(em) {
           font-style: italic !important;
@@ -519,6 +562,13 @@ function App() {
         }
         div :global(br) {
           margin: 0.5rem 0 !important;
+        }
+        /* Enhanced styling for structured sections */
+        div [style*="white-space: pre-wrap"] {
+          font-family: 'Inter', Arial, sans-serif !important;
+        }
+        div [style*="white-space: pre-wrap"] strong:first-child {
+          margin-top: 0 !important;
         }
       `}</style>
     </div>

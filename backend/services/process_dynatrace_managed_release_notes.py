@@ -3,7 +3,7 @@
 import logging
 import openai
 from fastapi.responses import JSONResponse
-from .data_models import ComponentLatestReleaseVersion
+from .data_models import ComponentLatestReleaseVersion, ComponentLatestReleaseSummary
 from .prompts.dynatrace_managed_prompts import get_dynatrace_managed_summary_prompt, get_dynatrace_managed_version_prompt
 
 
@@ -29,7 +29,7 @@ class ProcessDynatraceManagedReleaseNotes:
         if "error" in summary_result:
             return JSONResponse(status_code=500, content=summary_result)
         
-        return {"summary": summary_result["summary"], "dynatraceManagedLatestVersion": dynatrace_managed_latest_version}
+        return summary_result
 
     async def _get_dynatrace_managed_latest_version(self):
         """Get the latest Dynatrace Managed version"""
@@ -66,17 +66,21 @@ class ProcessDynatraceManagedReleaseNotes:
             summary_prompt = get_dynatrace_managed_summary_prompt(version)
             print(f"Sending summary prompt to OpenAI: {summary_prompt}")
             
-            summary_response = self.openai_client.responses.create(
+            summary_response = self.openai_client.responses.parse(
                 model="gpt-4o",  # Use gpt-4o instead of gpt-4.1 for better web access
                 input=summary_prompt,
-                tools=[{"type": "web_search_preview"}]
+                tools=[{"type": "web_search_preview"}],
+                text_format=ComponentLatestReleaseSummary
             )
-            summary = summary_response.output_text
-            print(f"Received summary from OpenAI: {summary}")
+            result = summary_response.output_parsed
+            print(f"Received summary from OpenAI: {result}")
             
-            if summary is None:
+            if result is None:
                 return {"error": "Failed to get summary from OpenAI."}
+            
+            # Ensure latestVersion is set
+            result.latestVersion = version
+            return result
                     
-            return {"summary": summary}
         except Exception as e:
             return {"error": str(e)}
