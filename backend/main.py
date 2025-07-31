@@ -2,6 +2,10 @@
 # FastAPI backend for Dynatrace Release Notes Summarizer Agent
 # Provides REST API endpoints for processing and summarizing Dynatrace release notes
 
+# --------------------------------------------------------------
+# Import dependencies and setup modules
+# --------------------------------------------------------------
+
 import sys
 import os
 # Add the current directory to Python path to find local modules
@@ -23,11 +27,17 @@ from services.process_dynatrace_api_release_notes import ProcessDynatraceApiRele
 from services.process_dynatrace_operator_release_notes import ProcessDynatraceOperatorReleaseNotes
 from services.process_dynatrace_managed_release_notes import ProcessDynatraceManagedReleaseNotes
 
+# --------------------------------------------------------------
+# Initialize application configuration and logging
+# --------------------------------------------------------------
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# --------------------------------------------------------------
+# Create FastAPI app instance and configure CORS
+# --------------------------------------------------------------
 
 app = FastAPI()
 
@@ -40,6 +50,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --------------------------------------------------------------
+# Initialize OpenAI client and component processors
+# --------------------------------------------------------------
+
 # Initialize OpenAI client and processors
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai_client = openai.OpenAI(api_key=openai_api_key) if openai_api_key else None
@@ -51,6 +65,10 @@ dynatrace_api_processor = ProcessDynatraceApiReleaseNotes(openai_client)
 dynatrace_operator_processor = ProcessDynatraceOperatorReleaseNotes(openai_client)
 dynatrace_managed_processor = ProcessDynatraceManagedReleaseNotes(openai_client)
 
+# --------------------------------------------------------------
+# Define helper functions for request processing
+# --------------------------------------------------------------
+
 
 @app.get("/")
 def read_root():
@@ -60,6 +78,10 @@ def read_root():
 
 async def process_selected_components(selected_items: list) -> dict:
     """Process selected Dynatrace components and return structured response"""
+    
+    # --------------------------------------------------------------
+    # Step 1: Parse selected components from request
+    # --------------------------------------------------------------
     
     # Check which components are selected
     oneagent_selected = False
@@ -80,6 +102,10 @@ async def process_selected_components(selected_items: list) -> dict:
                 dynatrace_operator_selected = True
             elif "dynatrace_managed" in item:
                 dynatrace_managed_selected = True
+    
+    # --------------------------------------------------------------
+    # Step 2: Initialize structured response template
+    # --------------------------------------------------------------
     
     # Initialize response object
     response = {
@@ -125,6 +151,10 @@ async def process_selected_components(selected_items: list) -> dict:
         }
     }
 
+    # --------------------------------------------------------------
+    # Step 3: Prepare tasks for parallel execution
+    # --------------------------------------------------------------
+
     # Prepare tasks for parallel execution
     tasks = []
     task_mapping = []
@@ -148,6 +178,10 @@ async def process_selected_components(selected_items: list) -> dict:
     if dynatrace_managed_selected:
         tasks.append(dynatrace_managed_processor.process_dynatrace_release_news())
         task_mapping.append(("dynatrace-managed", "dynatraceManagedLatestVersion"))
+    
+    # --------------------------------------------------------------
+    # Step 4: Execute processors in parallel and handle results
+    # --------------------------------------------------------------
     
     # Execute all selected processors in parallel
     if tasks:
@@ -174,21 +208,37 @@ async def process_selected_components(selected_items: list) -> dict:
                 response[component_key]["new_features"] = result.new_features
                 response[component_key]["resolved_issues"] = result.resolved_issues
     
+    # --------------------------------------------------------------
+    # Step 5: Validate selection and return response
+    # --------------------------------------------------------------
+    
     # Check if at least one component was selected
     if not oneagent_selected and not activegate_selected and not dynatrace_api_selected and not dynatrace_operator_selected and not dynatrace_managed_selected:
         return {"error": "No supported release notes selected. Please select OneAgent, ActiveGate, Dynatrace API, Dynatrace Operator, or Dynatrace Managed to proceed.", "status_code": 400}
     
     return response
 
+# --------------------------------------------------------------
+# Define API endpoints
+# --------------------------------------------------------------
+
 
 @app.post("/api/dynatrace-release-news-summary")
 async def build_dynatrace_release_news_summary(request: Request):
     """Main endpoint to generate Dynatrace release news summary"""
     
+    # --------------------------------------------------------------
+    # Parse and validate request body
+    # --------------------------------------------------------------
+    
     # Parse request body to check for selectedItems
     try:
         request_body = await request.json()
         selected_items = request_body.get("selectedItems", [])
+        
+        # --------------------------------------------------------------
+        # Process selected components and handle response
+        # --------------------------------------------------------------
         
         # Process selected components
         result = await process_selected_components(selected_items)

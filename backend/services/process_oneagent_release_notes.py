@@ -1,13 +1,24 @@
 # OneAgent release notes processing service for Dynatrace documentation
 
+# --------------------------------------------------------------
+# Import dependencies for OneAgent processing
+# --------------------------------------------------------------
+
 import logging
 import openai
 from fastapi.responses import JSONResponse
 from .data_models import ComponentLatestReleaseVersion, ComponentLatestReleaseSummary
 from .prompts.oneagent_prompts import get_oneagent_summary_prompt, get_oneagent_version_prompt
 
+# --------------------------------------------------------------
+# Configure logging for OneAgent service
+# --------------------------------------------------------------
 
 logger = logging.getLogger(__name__)
+
+# --------------------------------------------------------------
+# Define OneAgent service class for release notes processing
+# --------------------------------------------------------------
 
 
 class ProcessOneAgentReleaseNotes:
@@ -16,6 +27,10 @@ class ProcessOneAgentReleaseNotes:
     def __init__(self, openai_client: openai.OpenAI):
         """Initialize with OpenAI client"""
         self.openai_client = openai_client
+
+    # --------------------------------------------------------------
+    # Main processing methods
+    # --------------------------------------------------------------
 
     async def process_dynatrace_release_news(self):
         """Main method to process Dynatrace release news"""
@@ -30,6 +45,10 @@ class ProcessOneAgentReleaseNotes:
             return JSONResponse(status_code=500, content=summary_result)
         
         return summary_result
+
+    # --------------------------------------------------------------
+    # Version retrieval methods
+    # --------------------------------------------------------------
 
     async def _get_oneagent_latest_version(self):
         """Get the latest OneAgent version"""
@@ -59,6 +78,10 @@ class ProcessOneAgentReleaseNotes:
             
         except Exception as e:
             return {"error": str(e)}
+
+    # --------------------------------------------------------------
+    # Release summary methods
+    # --------------------------------------------------------------
 
     async def _get_oneagent_release_summary(self, version: str):
         """Get the summary for a given OneAgent version"""

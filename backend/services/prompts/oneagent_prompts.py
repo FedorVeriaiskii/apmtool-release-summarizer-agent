@@ -1,5 +1,9 @@
 # OneAgent-specific prompts for Dynatrace release notes processing
 
+# --------------------------------------------------------------
+# Define prompts for OneAgent version and summary extraction
+# --------------------------------------------------------------
+
 def get_oneagent_version_prompt() -> str:
     """Returns prompt to extract latest OneAgent version from docs"""
     return (

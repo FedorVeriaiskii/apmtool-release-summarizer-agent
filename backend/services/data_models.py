@@ -1,6 +1,14 @@
 # Data models for Dynatrace release notes processing services
 
+# --------------------------------------------------------------
+# Import dependencies for data validation
+# --------------------------------------------------------------
+
 from pydantic import BaseModel, Field
+
+# --------------------------------------------------------------
+# Define Pydantic models for structured data validation
+# --------------------------------------------------------------
 
 
 class ComponentLatestReleaseVersion(BaseModel):
