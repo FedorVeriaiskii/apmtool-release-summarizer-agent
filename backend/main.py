@@ -15,11 +15,18 @@ import asyncio
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from io import BytesIO
+import re
+from datetime import datetime
 
 from dotenv import load_dotenv
 
 import openai
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
 from services.data_models import ComponentLatestReleaseVersion, ComponentLatestReleaseSummary
 from services.process_oneagent_release_notes import ProcessOneAgentReleaseNotes
 from services.process_activegate_release_notes import ProcessActiveGateReleaseNotes
@@ -68,6 +75,178 @@ dynatrace_managed_processor = ProcessDynatraceManagedReleaseNotes(openai_client)
 # --------------------------------------------------------------
 # Define helper functions for request processing
 # --------------------------------------------------------------
+
+
+def generate_pdf_content(release_summaries: dict) -> BytesIO:
+    """Generate PDF content from release summaries"""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=1*inch, bottomMargin=1*inch)
+    
+    # Get styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=24,
+        spaceAfter=30,
+        textColor='#1496FF'
+    )
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading1'],
+        fontSize=16,
+        spaceBefore=20,
+        spaceAfter=10,
+        textColor='#1a3a6b'
+    )
+    section_style = ParagraphStyle(
+        'SectionHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceBefore=15,
+        spaceAfter=8,
+        textColor='#1496FF'
+    )
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceBefore=6,
+        spaceAfter=6,
+        leftIndent=20
+    )
+    
+    # Build story content
+    story = []
+    
+    # Add title
+    title = Paragraph("Dynatrace Release Notes Summary", title_style)
+    story.append(title)
+    story.append(Spacer(1, 20))
+    
+    # Add generation date
+    date_text = f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M')}"
+    story.append(Paragraph(date_text, styles['Normal']))
+    story.append(Spacer(1, 30))
+    
+    # Process each component
+    for component_key, component_data in release_summaries.items():
+        if component_data.get('latestVersion'):
+            # Component title with version
+            component_name = component_key.replace('-', ' ').replace('_', ' ').title()
+            if component_name == "Dynatrace Api":
+                component_name = "Dynatrace API"
+            
+            component_title = f"{component_name} - Version {component_data['latestVersion']}"
+            story.append(Paragraph(component_title, heading_style))
+            story.append(Spacer(1, 15))
+            
+            # Add sections
+            sections = [
+                ('Breaking Changes', component_data.get('breaking_changes', '')),
+                ('Announcements', component_data.get('announcements', '')),
+                ('New Features', component_data.get('new_features', '')),
+                ('Technology Support', component_data.get('technology_support', '')),
+                ('Resolved Issues', component_data.get('resolved_issues', ''))
+            ]
+            
+            for section_title, section_content in sections:
+                if section_content and section_content.strip():
+                    story.append(Paragraph(section_title, section_style))
+                    
+                    # Clean and format content
+                    clean_content = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', section_content)
+                    clean_content = clean_content.replace('\n\n', '<br/><br/>')
+                    clean_content = clean_content.replace('\n', '<br/>')
+                    
+                    story.append(Paragraph(clean_content, normal_style))
+                    story.append(Spacer(1, 10))
+            
+            story.append(Spacer(1, 30))
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+
+def generate_pdf_from_release_news(release_news: list) -> BytesIO:
+    """Generate PDF content from frontend releaseNews array format"""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=1*inch, bottomMargin=1*inch)
+    
+    # Get styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=24,
+        spaceAfter=30,
+        textColor='#1496FF'
+    )
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading1'],
+        fontSize=16,
+        spaceBefore=20,
+        spaceAfter=10,
+        textColor='#1a3a6b'
+    )
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceBefore=6,
+        spaceAfter=6,
+        leftIndent=20
+    )
+    
+    # Build story content
+    story = []
+    
+    # Add title
+    title = Paragraph("Dynatrace Release Notes Summary", title_style)
+    story.append(title)
+    story.append(Spacer(1, 20))
+    
+    # Add generation date
+    date_text = f"Generated on: {datetime.now().strftime('%B %d, %Y at %H:%M')}"
+    story.append(Paragraph(date_text, styles['Normal']))
+    story.append(Spacer(1, 30))
+    
+    # Process each release news item
+    for item in release_news:
+        component = item.get('component', '')
+        version = item.get('version', '')
+        summary = item.get('summary', '')
+        
+        # Skip error components
+        if component in ['Error', 'Info']:
+            continue
+        
+        # Component title with version
+        component_title = f"{component}"
+        if version:
+            component_title += f" - Version {version}"
+            
+        story.append(Paragraph(component_title, heading_style))
+        story.append(Spacer(1, 15))
+        
+        # Clean and format summary content
+        if summary:
+            # Remove emoji and markdown formatting for PDF
+            clean_content = re.sub(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF🚨📢✨🔧🐛]', '', summary)
+            clean_content = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', clean_content)
+            clean_content = clean_content.replace('\n\n', '<br/><br/>')
+            clean_content = clean_content.replace('\n', '<br/>')
+            
+            story.append(Paragraph(clean_content, normal_style))
+            story.append(Spacer(1, 20))
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
 
 @app.get("/")
@@ -254,3 +433,51 @@ async def build_dynatrace_release_news_summary(request: Request):
             
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": f"Invalid request format: {str(e)}"})
+
+
+@app.post("/api/download-release-news-pdf")
+async def download_release_news_pdf(request: Request):
+    """Endpoint to download release news as PDF from frontend releaseNews data"""
+    
+    # --------------------------------------------------------------
+    # Parse request and generate PDF from releaseNews data
+    # --------------------------------------------------------------
+    
+    try:
+        request_body = await request.json()
+        release_news = request_body.get("releaseNews", [])
+        
+        # Validate that we have release news data
+        if not release_news or len(release_news) == 0:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "No release news data provided"}
+            )
+        
+        # Filter out error/info components
+        valid_release_news = [
+            item for item in release_news 
+            if item.get('component') not in ['Error', 'Info'] and item.get('summary', '').strip()
+        ]
+        
+        if not valid_release_news:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "No valid release data available to generate PDF"}
+            )
+        
+        # Generate PDF from release news data
+        pdf_buffer = generate_pdf_from_release_news(valid_release_news)
+        
+        # Generate filename with current date
+        filename = f"Dynatrace_Release_Notes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        # Return PDF as streaming response
+        return StreamingResponse(
+            BytesIO(pdf_buffer.read()),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"PDF generation failed: {str(e)}"})

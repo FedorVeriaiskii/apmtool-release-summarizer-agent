@@ -130,131 +130,50 @@ function App() {
     setIsLoading(false);
   };
 
-  // Download release news as PDF (copy of fetch logic)
+  // Download release news as PDF from backend using existing releaseNews data
   const handleDownloadPdf = async () => {
-    let summary = '';
-    let version = '';
-    
-    // Function to convert display name to element id
-    const getElementId = (itemName) => {
-      const idMap = {
-        "dynatrace_managed": "Dynatrace Managed release notes",
-        "oneagent": "OneAgent release notes",
-        "active_gate": "ActiveGate release notes",
-        "dynatrace_api": "Dynatrace API changelog",
-        "dynatrace_operator": "Dynatrace Operator release notes"
-      };
-      // Find the key that matches the itemName value
-      const elementId = Object.keys(idMap).find(key => idMap[key] === itemName);
-      return elementId || itemName.toLowerCase().replace(/\s+/g, '_');
-    };
-    
-    // Get selected items as array of objects with element id as key and value as value
-    const selectedItems = releaseNoteItems
-      .map((item, idx) => ({
-        elementId: getElementId(item),
-        value: item,
-        selected: checkedItems[idx]
-      }))
-      .filter(item => item.selected)
-      .map(item => ({ [item.elementId]: item.value }));
-    
     try {
-      console.log('Downloading full release news...');
-      const res = await fetch("http://localhost:8000/api/dynatrace-release-news-summary", {
+      console.log('Downloading PDF from backend using existing data...');
+      const res = await fetch("http://localhost:8000/api/download-release-news-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedItems: selectedItems }),
+        body: JSON.stringify({ releaseNews: releaseNews }),
       });
-      let data;
-      try {
-        data = await res.json();
-      } catch (jsonError) {
-        // If response is not valid JSON, show raw text
-        const text = await res.text();
-        summary = "Error: Unexpected response: " + text.slice(0, 200);
-        version = '';
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('PDF download error:', errorData);
+        alert(`Error downloading PDF: ${errorData.error || 'Unknown error'}`);
+        return;
       }
-      if (data && (data.oneagent || data["active-gate"] || data["dynatrace-api"] || data["dynatrace-operator"] || data["dynatrace-managed"])) {
-        // Helper function to create structured summary from new format for PDF
-        const createPdfSummary = (componentData, componentName) => {
-          if (!componentData || !componentData.latestVersion) return null;
-          
-          const sections = [];
-          if (componentData.breaking_changes) {
-            sections.push(`Breaking Changes:\n${componentData.breaking_changes}`);
-          }
-          if (componentData.announcements) {
-            sections.push(`Announcements:\n${componentData.announcements}`);
-          }
-          if (componentData.new_features) {
-            sections.push(`New Features:\n${componentData.new_features}`);
-          }
-          if (componentData.technology_support) {
-            sections.push(`Technology Support:\n${componentData.technology_support}`);
-          }
-          if (componentData.resolved_issues) {
-            sections.push(`Resolved Issues:\n${componentData.resolved_issues}`);
-          }
-          
-          return {
-            summary: sections.join('\n\n'),
-            version: componentData.latestVersion,
-            component: componentName
-          };
-        };
-        
-        // Determine which component has data for PDF (prioritize in order)
-        let pdfData = null;
-        if (data.oneagent && data.oneagent.latestVersion) {
-          pdfData = createPdfSummary(data.oneagent, "OneAgent");
-        } else if (data["active-gate"] && data["active-gate"].latestVersion) {
-          pdfData = createPdfSummary(data["active-gate"], "ActiveGate");
-        } else if (data["dynatrace-api"] && data["dynatrace-api"].latestVersion) {
-          pdfData = createPdfSummary(data["dynatrace-api"], "Dynatrace API");
-        } else if (data["dynatrace-operator"] && data["dynatrace-operator"].latestVersion) {
-          pdfData = createPdfSummary(data["dynatrace-operator"], "Dynatrace Operator");
-        } else if (data["dynatrace-managed"] && data["dynatrace-managed"].latestVersion) {
-          pdfData = createPdfSummary(data["dynatrace-managed"], "Dynatrace Managed");
+      
+      // Get the PDF blob
+      const blob = await res.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Extract filename from response headers or use default
+      const contentDisposition = res.headers.get('Content-Disposition');
+      let filename = 'Dynatrace_Release_Notes.pdf';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
         }
-        
-        if (pdfData) {
-          summary = pdfData.summary;
-          version = pdfData.version;
-        } else {
-          summary = "No summary data available for selected components.";
-          version = '';
-        }
-      } else {
-        summary = "Error: " + (data.error || "Unknown error");
-        version = '';
       }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
     } catch (error) {
-      summary = "Error: " + error.message;
-      version = '';
-    }
-    const docTitle = version ? `Latest Dynatrace Release (${version})` : 'Latest Release News';
-    const content = `${docTitle}\n\n${summary}`;
-    // Create a simple PDF using jsPDF
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    script.onload = () => {
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
-      pdf.setFont('Arial');
-      pdf.setFontSize(14);
-      pdf.text(content, 10, 20, { maxWidth: 180 });
-      pdf.save('Dynatrace_Release_News.pdf');
-    };
-    if (!window.jspdf) {
-      document.body.appendChild(script);
-    } else {
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
-      pdf.setFont('Arial');
-      pdf.setFontSize(14);
-      pdf.text(content, 10, 20, { maxWidth: 180 });
-      pdf.save('Dynatrace_Release_News.pdf');
+      console.error('PDF download failed:', error);
+      alert(`Error downloading PDF: ${error.message}`);
     }
   };
 
@@ -371,21 +290,34 @@ function App() {
             </button>
             <button
               onClick={handleDownloadPdf}
+              disabled={releaseNews.length === 0 || releaseNews.some(item => item.component === "Error")}
               style={{
                 padding: '0.85rem 1.7rem',
-                background: 'linear-gradient(90deg, #4CAF50 60%, #1a3a6b 100%)',
-                color: '#fff',
+                background: (releaseNews.length > 0 && !releaseNews.some(item => item.component === "Error"))
+                  ? 'linear-gradient(90deg, #4CAF50 60%, #1a3a6b 100%)'
+                  : 'linear-gradient(90deg, #cccccc 60%, #999999 100%)',
+                color: (releaseNews.length > 0 && !releaseNews.some(item => item.component === "Error")) ? '#fff' : '#666',
                 border: 'none',
                 borderRadius: '8px',
                 fontSize: '1.15rem',
                 fontWeight: 600,
-                cursor: 'pointer',
-                opacity: 1,
-                boxShadow: '0 2px 12px rgba(76,175,80,0.18)',
+                cursor: (releaseNews.length > 0 && !releaseNews.some(item => item.component === "Error")) ? 'pointer' : 'not-allowed',
+                opacity: (releaseNews.length > 0 && !releaseNews.some(item => item.component === "Error")) ? 1 : 0.6,
+                boxShadow: (releaseNews.length > 0 && !releaseNews.some(item => item.component === "Error"))
+                  ? '0 2px 12px rgba(76,175,80,0.18)'
+                  : '0 2px 12px rgba(0,0,0,0.1)',
                 transition: 'background 0.2s',
               }}
-              onMouseOver={e => { e.target.style.background = '#388E3C'; }}
-              onMouseOut={e => { e.target.style.background = 'linear-gradient(90deg, #4CAF50 60%, #1a3a6b 100%)'; }}
+              onMouseOver={e => {
+                if (releaseNews.length > 0 && !releaseNews.some(item => item.component === "Error")) {
+                  e.target.style.background = '#388E3C';
+                }
+              }}
+              onMouseOut={e => {
+                if (releaseNews.length > 0 && !releaseNews.some(item => item.component === "Error")) {
+                  e.target.style.background = 'linear-gradient(90deg, #4CAF50 60%, #1a3a6b 100%)';
+                }
+              }}
             >
               Download Latest Release news as pdf
             </button>
