@@ -11,7 +11,7 @@ The **APM-Tool Release Summarizer Agent** is an AI-powered web application desig
 *Interactive component selection interface with real-time validation*
 
 ### Release Summary Display
-![Release Summary Display](./images/release-summary.png)
+![Release Summary Display](./images/release-summary-pdf.png)
 *AI-generated structured summaries with categorized release information*
 
 ### Key Features

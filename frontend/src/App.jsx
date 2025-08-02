@@ -5,11 +5,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
 
   const releaseNoteItems = [
-    "Dynatrace Managed release notes",
+    "APM-Tool Managed release notes",
     "OneAgent release notes",
     "ActiveGate release notes",
-    "Dynatrace API changelog",
-    "Dynatrace Operator release notes"
+    "APM-Tool API changelog",
+    "APM-Tool Operator release notes"
   ];
   const [checkedItems, setCheckedItems] = useState(Array(releaseNoteItems.length).fill(false));
 
@@ -28,11 +28,11 @@ function App() {
     // Function to convert display name to element id
     const getElementId = (itemName) => {
       const idMap = {
-        "dynatrace_managed": "Dynatrace Managed release notes",
+        "dynatrace_managed": "APM-Tool Managed release notes",
         "oneagent": "OneAgent release notes",
         "active_gate": "ActiveGate release notes",
-        "dynatrace_api": "Dynatrace API changelog",
-        "dynatrace_operator": "Dynatrace Operator release notes"
+        "dynatrace_api": "APM-Tool API changelog",
+        "dynatrace_operator": "APM-Tool Operator release notes"
       };
       // Find the key that matches the itemName value
       const elementId = Object.keys(idMap).find(key => idMap[key] === itemName);
@@ -97,8 +97,8 @@ function App() {
         };
       };
 
-      // Check and add Dynatrace Managed data if available
-      const managedSummary = createStructuredSummary(data["dynatrace-managed"], "Dynatrace Managed");
+      // Check and add APM-Tool Managed data if available
+      const managedSummary = createStructuredSummary(data["dynatrace-managed"], "APM-Tool Managed");
       if (managedSummary) summaries.push(managedSummary);
       
       // Check and add OneAgent data if available
@@ -108,13 +108,13 @@ function App() {
       // Check and add ActiveGate data if available
       const activegateSummary = createStructuredSummary(data["active-gate"], "ActiveGate");
       if (activegateSummary) summaries.push(activegateSummary);
-      
-      // Check and add Dynatrace API data if available
-      const apiSummary = createStructuredSummary(data["dynatrace-api"], "Dynatrace API");
+
+      // Check and add APM-Tool API data if available
+      const apiSummary = createStructuredSummary(data["dynatrace-api"], "APM-Tool API");
       if (apiSummary) summaries.push(apiSummary);
       
-      // Check and add Dynatrace Operator data if available
-      const operatorSummary = createStructuredSummary(data["dynatrace-operator"], "Dynatrace Operator");
+      // Check and add APM-Tool Operator data if available
+      const operatorSummary = createStructuredSummary(data["dynatrace-operator"], "APM-Tool Operator");
       if (operatorSummary) summaries.push(operatorSummary);
       
       if (summaries.length > 0) {
@@ -157,7 +157,7 @@ function App() {
       
       // Extract filename from response headers or use default
       const contentDisposition = res.headers.get('Content-Disposition');
-      let filename = 'Dynatrace_Release_Notes.pdf';
+      let filename = 'APM-Tool_Release_Notes.pdf';
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
         if (filenameMatch) {
@@ -200,7 +200,7 @@ function App() {
           margin: 0,
           textShadow: '0 2px 16px rgba(20,150,255,0.18)',
         }}>
-          Dynatrace Release Notes Summarizer Agent
+          APM-Tool Release Notes Summarizer Agent
         </h1>
         <p style={{
           color: '#e3e8ee',
@@ -209,7 +209,7 @@ function App() {
           maxWidth: '700px',
           fontWeight: 400,
         }}>
-          These release notes for Dynatrace updates—showcasing new features, changes, and bug fixes—keep you informed and ahead of the game.<br />
+          These release notes for APM-Tool updates—showcasing new features, changes, and bug fixes—keep you informed and ahead of the game.<br />
           <span style={{ display: 'block', marginTop: '0.5rem', color: '#fff', fontWeight: 500 }}>Please select the elements:</span>
         </p>
       </header>
