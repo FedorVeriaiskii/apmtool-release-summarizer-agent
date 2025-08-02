@@ -1,8 +1,8 @@
-# Dynatrace Release Summarizer Agent
+# APM-Tool Release Summarizer Agent
 
 ## Overview
 
-The **Dynatrace Release Summarizer Agent** is an AI-powered web application designed to streamline the process of tracking and understanding Dynatrace release notes across all major components. This intelligent tool automatically fetches, processes, and summarizes the latest release information from official Dynatrace documentation, providing teams with comprehensive, structured insights about new features, breaking changes, technology updates, and bug fixes. Additionally, it generates downloadable PDF reports for easy documentation and sharing across teams.
+The **APM-Tool Release Summarizer Agent** is an AI-powered web application designed to streamline the process of tracking and understanding APM-Tool release notes across all major components. This intelligent tool automatically fetches, processes, and summarizes the latest release information from official APM-Tool documentation, providing teams with comprehensive, structured insights about new features, breaking changes, technology updates, and bug fixes. Additionally, it generates downloadable PDF reports for easy documentation and sharing across teams.
 
 ## Screenshots
 
@@ -16,12 +16,12 @@ The **Dynatrace Release Summarizer Agent** is an AI-powered web application desi
 
 ### Key Features
 
-- **Multi-Component Support**: Covers all major Dynatrace components:
+- **Multi-Component Support**: Covers all major APM-Tool components:
   - **OneAgent**: Monitoring agent for application and infrastructure
   - **ActiveGate**: Gateway component for data routing and processing
-  - **Dynatrace API**: REST API endpoints and integration capabilities
-  - **Dynatrace Operator**: Kubernetes operator for container orchestration
-  - **Dynatrace Managed**: Self-hosted Dynatrace platform
+  - **APM-Tool API**: REST API endpoints and integration capabilities
+  - **APM-Tool Operator**: Kubernetes operator for container orchestration
+  - **APM-Tool Managed**: Self-hosted APM-Tool platform
 
 - **AI-Powered Summarization**: Leverages OpenAI's GPT-4o model to:
   - Extract latest version information from official documentation
@@ -52,7 +52,7 @@ The **Dynatrace Release Summarizer Agent** is an AI-powered web application desi
 - **Development Teams**: Track API changes and new integration capabilities
 - **Platform Engineers**: Monitor Kubernetes operator and platform updates
 - **Management**: Generate executive summaries of technology updates
-- **Documentation**: Create timestamped records of Dynatrace evolution
+- **Documentation**: Create timestamped records of APM-Tool evolution
 
 ## Project Structure
 - `backend`: FastAPI backend
