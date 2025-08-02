@@ -4,6 +4,16 @@
 
 The **Dynatrace Release Summarizer Agent** is an AI-powered web application designed to streamline the process of tracking and understanding Dynatrace release notes across all major components. This intelligent tool automatically fetches, processes, and summarizes the latest release information from official Dynatrace documentation, providing teams with comprehensive, structured insights about new features, breaking changes, technology updates, and bug fixes. Additionally, it generates downloadable PDF reports for easy documentation and sharing across teams.
 
+## Screenshots
+
+### Application Interface
+![Application Interface](./images/app-interface.png)
+*Interactive component selection interface with real-time validation*
+
+### Release Summary Display
+![Release Summary Display](./images/release-summary.png)
+*AI-generated structured summaries with categorized release information*
+
 ### Key Features
 
 - **Multi-Component Support**: Covers all major Dynatrace components:
